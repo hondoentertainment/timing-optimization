@@ -9,6 +9,7 @@ export interface Interest {
   id: string
   name: string
   color: string
+  goalHours?: number
 }
 
 export interface WeekData {
@@ -23,7 +24,7 @@ export interface AppState {
   weeks: Record<string, WeekData>
 }
 
-export type View = 'plan' | 'track' | 'review' | 'interests' | 'settings'
+export type View = 'home' | 'plan' | 'track' | 'review' | 'interests' | 'settings'
 
 export interface TrendRow {
   interestId: string
@@ -32,4 +33,12 @@ export interface TrendRow {
   avgPlanned: number
   avgActual: number
   avgDelta: number
+  weeklyActuals: number[]
+  chronicUnder: boolean
+}
+
+export interface DashboardInsight {
+  type: 'under' | 'over' | 'goal' | 'unallocated'
+  interestName: string
+  message: string
 }

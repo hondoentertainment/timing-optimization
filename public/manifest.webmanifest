@@ -1,0 +1,17 @@
+{
+  "name": "168 — Time Optimizer",
+  "short_name": "168",
+  "description": "Allocate 168 hours every week across your interests.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f2f2f7",
+  "theme_color": "#007aff",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

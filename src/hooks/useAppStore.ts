@@ -3,6 +3,7 @@ import { INTEREST_COLORS } from '../constants'
 import { importState, loadState, saveState } from '../storage'
 import type { AppState, Interest, Settings, WeekData } from '../types'
 import { getWeekStart, shiftWeek } from '../utils/week'
+import { getRecentWeekStarts } from '../utils/trends'
 
 function emptyWeek(): WeekData {
   return { planned: {}, actual: {}, notes: '' }
@@ -14,6 +15,10 @@ function ensureWeek(state: AppState, weekStart: string): WeekData {
 
 function normalizeName(name: string) {
   return name.trim().replace(/\s+/g, ' ')
+}
+
+function roundHalf(n: number) {
+  return Math.round(n * 2) / 2
 }
 
 export function useAppStore() {
@@ -28,6 +33,10 @@ export function useAppStore() {
     168 - state.settings.sleepHours - state.settings.workHours
 
   const weekData = ensureWeek(state, currentWeek)
+
+  const goToCurrentWeek = useCallback(() => {
+    setCurrentWeek(getWeekStart())
+  }, [])
 
   const updateSettings = useCallback((settings: Settings) => {
     setState((prev) => ({ ...prev, settings }))
@@ -123,6 +132,36 @@ export function useAppStore() {
     },
     [],
   )
+
+  const setInterestColor = useCallback((id: string, color: string) => {
+    setState((prev) => ({
+      ...prev,
+      interests: prev.interests.map((i) =>
+        i.id === id ? { ...i, color } : i,
+      ),
+    }))
+  }, [])
+
+  const setInterestGoal = useCallback((id: string, goalHours: number) => {
+    setState((prev) => ({
+      ...prev,
+      interests: prev.interests.map((i) =>
+        i.id === id ? { ...i, goalHours: Math.max(0, goalHours) } : i,
+      ),
+    }))
+  }, [])
+
+  const reorderInterest = useCallback((id: string, direction: 'up' | 'down') => {
+    setState((prev) => {
+      const index = prev.interests.findIndex((i) => i.id === id)
+      if (index === -1) return prev
+      const target = direction === 'up' ? index - 1 : index + 1
+      if (target < 0 || target >= prev.interests.length) return prev
+      const interests = [...prev.interests]
+      ;[interests[index], interests[target]] = [interests[target], interests[index]]
+      return { ...prev, interests }
+    })
+  }, [])
 
   const removeInterest = useCallback((id: string) => {
     setState((prev) => {
@@ -225,6 +264,56 @@ export function useAppStore() {
     return copied
   }, [currentWeek])
 
+  const replanFromActuals = useCallback(
+    (source: 'lastWeek' | 'fourWeekAvg'): boolean => {
+      let applied = false
+
+      setState((prev) => {
+        const week = ensureWeek(prev, currentWeek)
+        const planned: Record<string, number> = { ...week.planned }
+
+        if (source === 'lastWeek') {
+          const prevData = ensureWeek(prev, shiftWeek(currentWeek, -1))
+          const hasActual = prev.interests.some(
+            (i) => (prevData.actual[i.id] ?? 0) > 0,
+          )
+          if (!hasActual) return prev
+          applied = true
+          for (const interest of prev.interests) {
+            planned[interest.id] = prevData.actual[interest.id] ?? 0
+          }
+        } else {
+          const weeks = getRecentWeekStarts(shiftWeek(currentWeek, -1), 4)
+          const hasAny = weeks.some((w) =>
+            prev.interests.some(
+              (i) => (ensureWeek(prev, w).actual[i.id] ?? 0) > 0,
+            ),
+          )
+          if (!hasAny) return prev
+          applied = true
+          for (const interest of prev.interests) {
+            let sum = 0
+            for (const w of weeks) {
+              sum += ensureWeek(prev, w).actual[interest.id] ?? 0
+            }
+            planned[interest.id] = roundHalf(sum / weeks.length)
+          }
+        }
+
+        return {
+          ...prev,
+          weeks: {
+            ...prev.weeks,
+            [currentWeek]: { ...week, planned },
+          },
+        }
+      })
+
+      return applied
+    },
+    [currentWeek],
+  )
+
   const distributeRemaining = useCallback(() => {
     setState((prev) => {
       const week = ensureWeek(prev, currentWeek)
@@ -281,6 +370,7 @@ export function useAppStore() {
     state,
     currentWeek,
     setCurrentWeek,
+    goToCurrentWeek,
     discretionaryHours,
     weekData,
     plannedTotal,
@@ -288,11 +378,15 @@ export function useAppStore() {
     updateSettings,
     addInterest,
     renameInterest,
+    setInterestColor,
+    setInterestGoal,
+    reorderInterest,
     removeInterest,
     setPlanned,
     setActual,
     setWeekNotes,
     duplicatePlanFromPreviousWeek,
+    replanFromActuals,
     distributeRemaining,
     replaceState,
     importState,

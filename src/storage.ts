@@ -1,4 +1,5 @@
-import type { AppState } from './types'
+import { INTEREST_COLORS, LEGACY_GRAY_COLORS } from './constants'
+import type { AppState, Interest } from './types'
 
 const STORAGE_KEY = 'timing-optimization'
 const EXPORT_VERSION = 1
@@ -23,10 +24,21 @@ export function saveState(state: AppState): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
 }
 
+function migrateInterestColors(interests: Interest[]): Interest[] {
+  const needsMigration = interests.some((i) => LEGACY_GRAY_COLORS.has(i.color))
+  if (!needsMigration) return interests
+
+  return interests.map((interest, index) => ({
+    ...interest,
+    color: INTEREST_COLORS[index % INTEREST_COLORS.length],
+  }))
+}
+
 function normalizeState(parsed: Partial<AppState>): AppState {
+  const interests = migrateInterestColors(parsed.interests ?? [])
   return {
     settings: { ...DEFAULT_STATE.settings, ...parsed.settings },
-    interests: parsed.interests ?? [],
+    interests,
     weeks: parsed.weeks ?? {},
   }
 }

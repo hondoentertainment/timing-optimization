@@ -2,7 +2,9 @@ import { useRef, useState } from 'react'
 import { TOTAL_WEEKLY_HOURS } from '../types'
 import { exportState } from '../storage'
 import type { AppStore } from '../hooks/useAppStore'
-import { HourInput } from './HourInput'
+import { Button } from './ui/Button'
+import { Card } from './ui/Card'
+import { PageHeader, SectionLabel } from './ui/PageHeader'
 
 export function SettingsView({ store }: { store: AppStore }) {
   const { state, discretionaryHours, updateSettings, replaceState, importState } =
@@ -27,6 +29,7 @@ export function SettingsView({ store }: { store: AppStore }) {
       if (!result.ok) {
         setImportMessage(result.error)
       } else {
+        if (!window.confirm('Replace all current data with this backup?')) return
         replaceState(result.state)
         setImportMessage('Backup restored')
       }
@@ -36,69 +39,46 @@ export function SettingsView({ store }: { store: AppStore }) {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="animate-fade-in space-y-8">
+      <PageHeader
+        title="Settings"
+        subtitle="Fixed blocks and data management"
+      />
+
       <div>
-        <h1 className="text-lg font-medium text-neutral-900">Settings</h1>
-        <p className="mt-1 text-sm text-neutral-500">
-          Fixed weekly blocks — consistent across all weeks.
-        </p>
-      </div>
-
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-neutral-800">Sleep</p>
-            <p className="text-xs text-neutral-400">Hours per week</p>
-          </div>
-          <HourInput
+        <SectionLabel>Fixed weekly blocks</SectionLabel>
+        <Card className="mt-2 overflow-hidden divide-y divide-[var(--separator)]">
+          <SettingRow
+            label="Sleep"
+            detail="Hours per week"
             value={state.settings.sleepHours}
-            onChange={(h) =>
-              updateSettings({ ...state.settings, sleepHours: h })
-            }
+            onChange={(h) => updateSettings({ ...state.settings, sleepHours: h })}
           />
-        </div>
-
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-neutral-800">Work</p>
-            <p className="text-xs text-neutral-400">Hours per week</p>
-          </div>
-          <HourInput
+          <SettingRow
+            label="Work"
+            detail="Hours per week"
             value={state.settings.workHours}
-            onChange={(h) =>
-              updateSettings({ ...state.settings, workHours: h })
-            }
+            onChange={(h) => updateSettings({ ...state.settings, workHours: h })}
           />
-        </div>
-      </div>
-
-      <div className="border-t border-neutral-200 pt-6 font-mono text-xs tabular-nums text-neutral-400 space-y-1">
-        <p>{TOTAL_WEEKLY_HOURS}h total per week</p>
-        <p>
-          {state.settings.sleepHours + state.settings.workHours}h fixed ·{' '}
-          {discretionaryHours}h for interests
+        </Card>
+        <p className="mt-3 px-1 text-[13px] tabular-nums text-[var(--label-secondary)]">
+          {TOTAL_WEEKLY_HOURS}h total · {state.settings.sleepHours + state.settings.workHours}h fixed ·{' '}
+          {discretionaryHours}h discretionary
         </p>
       </div>
 
-      <div className="border-t border-neutral-200 pt-6 space-y-4">
-        <p className="text-xs uppercase tracking-widest text-neutral-400">
-          Backup
-        </p>
-        <div className="flex gap-4">
-          <button
-            type="button"
-            onClick={handleExport}
-            className="text-sm text-neutral-600 hover:text-neutral-900"
-          >
-            Export JSON
-          </button>
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            className="text-sm text-neutral-600 hover:text-neutral-900"
-          >
-            Import JSON
-          </button>
+      <div>
+        <SectionLabel>Backup</SectionLabel>
+        <Card className="mt-2 p-4">
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={handleExport}>Export JSON</Button>
+            <Button variant="secondary" onClick={() => fileRef.current?.click()}>
+              Import JSON
+            </Button>
+          </div>
+          {importMessage && (
+            <p className="mt-3 text-[13px] text-[var(--label-secondary)]">{importMessage}</p>
+          )}
           <input
             ref={fileRef}
             type="file"
@@ -110,28 +90,60 @@ export function SettingsView({ store }: { store: AppStore }) {
               e.target.value = ''
             }}
           />
-        </div>
-        {importMessage && (
-          <p className="text-xs text-neutral-500">{importMessage}</p>
-        )}
+        </Card>
       </div>
 
-      <div className="border-t border-neutral-200 pt-6 space-y-2">
-        <p className="text-xs uppercase tracking-widest text-neutral-400">
-          Shortcuts
-        </p>
-        <div className="text-sm text-neutral-500 space-y-1">
-          <p>
-            <span className="font-mono text-neutral-700">1–5</span> Switch tabs
-          </p>
-          <p>
-            <span className="font-mono text-neutral-700">← →</span> Change week
-          </p>
-          <p>
-            <span className="font-mono text-neutral-700">/</span> Focus add interest
-          </p>
-        </div>
+      <div>
+        <SectionLabel>Keyboard shortcuts</SectionLabel>
+        <Card className="mt-2 overflow-hidden divide-y divide-[var(--separator)]">
+          {[
+            ['1 – 6', 'Switch sections'],
+            ['← →', 'Change week'],
+            ['/', 'Focus add interest'],
+            ['T', 'Jump to this week'],
+          ].map(([key, desc]) => (
+            <div key={key} className="flex items-center justify-between px-4 py-3">
+              <span className="text-[15px] text-[var(--label)]">{desc}</span>
+              <kbd className="rounded-md bg-[var(--fill-secondary)] px-2 py-1 font-mono text-[13px] text-[var(--label-secondary)]">
+                {key}
+              </kbd>
+            </div>
+          ))}
+        </Card>
       </div>
+    </div>
+  )
+}
+
+function SettingRow({
+  label,
+  detail,
+  value,
+  onChange,
+}: {
+  label: string
+  detail: string
+  value: number
+  onChange: (v: number) => void
+}) {
+  return (
+    <div className="flex items-center justify-between px-4 py-3.5">
+      <div>
+        <p className="text-[15px] font-medium text-[var(--label)]">{label}</p>
+        <p className="text-[13px] text-[var(--label-secondary)]">{detail}</p>
+      </div>
+      <input
+        type="number"
+        min={0}
+        max={168}
+        step={0.5}
+        value={value || ''}
+        onChange={(e) => {
+          const n = parseFloat(e.target.value)
+          onChange(Number.isNaN(n) ? 0 : n)
+        }}
+        className="w-16 rounded-lg bg-[var(--fill-secondary)] px-2 py-1.5 text-right text-[15px] font-semibold tabular-nums outline-none focus:ring-2 focus:ring-[var(--accent-soft)]"
+      />
     </div>
   )
 }

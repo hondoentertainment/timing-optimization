@@ -1,8 +1,34 @@
-import type { AppState, TrendRow } from '../types'
+import type { AppState, DashboardInsight, TrendRow } from '../types'
 import { getRecentWeekStarts } from './trends'
 
 function ensureWeek(state: AppState, weekStart: string) {
   return state.weeks[weekStart] ?? { planned: {}, actual: {} }
+}
+
+function roundHalf(n: number): number {
+  return Math.round(n * 2) / 2
+}
+
+export function computeOptimizationScore(
+  state: AppState,
+  weekStart: string,
+  discretionaryHours: number,
+): number | null {
+  if (state.interests.length === 0 || discretionaryHours === 0) return null
+  const data = ensureWeek(state, weekStart)
+  const actualTotal = state.interests.reduce(
+    (s, i) => s + (data.actual[i.id] ?? 0),
+    0,
+  )
+  if (actualTotal === 0) return null
+
+  const totalDelta = state.interests.reduce((s, i) => {
+    const planned = data.planned[i.id] ?? 0
+    const actual = data.actual[i.id] ?? 0
+    return s + Math.abs(actual - planned)
+  }, 0)
+
+  return Math.max(0, Math.round(100 - (totalDelta / discretionaryHours) * 100))
 }
 
 export function computeTrends(
@@ -15,26 +41,33 @@ export function computeTrends(
   return state.interests.map((interest) => {
     let plannedSum = 0
     let actualSum = 0
+    const weeklyActuals: number[] = []
+    let underWeeks = 0
+
     for (const week of weeks) {
       const data = ensureWeek(state, week)
-      plannedSum += data.planned[interest.id] ?? 0
-      actualSum += data.actual[interest.id] ?? 0
+      const planned = data.planned[interest.id] ?? 0
+      const actual = data.actual[interest.id] ?? 0
+      plannedSum += planned
+      actualSum += actual
+      weeklyActuals.push(actual)
+      if (planned > 0 && actual < planned) underWeeks++
     }
-    const avgPlanned = plannedSum / weekCount
-    const avgActual = actualSum / weekCount
+
+    const avgPlanned = roundHalf(plannedSum / weekCount)
+    const avgActual = roundHalf(actualSum / weekCount)
+
     return {
       interestId: interest.id,
       name: interest.name,
       color: interest.color,
-      avgPlanned: roundHalf(avgPlanned),
-      avgActual: roundHalf(avgActual),
+      avgPlanned,
+      avgActual,
       avgDelta: roundHalf(avgActual - avgPlanned),
+      weeklyActuals,
+      chronicUnder: underWeeks >= 3 && avgPlanned > 0,
     }
   })
-}
-
-function roundHalf(n: number): number {
-  return Math.round(n * 2) / 2
 }
 
 export function getWeeklyHighlights(
@@ -58,4 +91,55 @@ export function getWeeklyHighlights(
   }
 
   return { over, under }
+}
+
+export function getDashboardInsights(
+  state: AppState,
+  weekStart: string,
+  discretionaryHours: number,
+  plannedTotal: number,
+): DashboardInsight[] {
+  const insights: DashboardInsight[] = []
+  const data = ensureWeek(state, weekStart)
+  const trends = computeTrends(state, weekStart, 4)
+
+  if (discretionaryHours - plannedTotal > 0) {
+    insights.push({
+      type: 'unallocated',
+      interestName: '',
+      message: `${discretionaryHours - plannedTotal}h still unallocated this week`,
+    })
+  }
+
+  for (const row of trends.filter((t) => t.chronicUnder)) {
+    insights.push({
+      type: 'under',
+      interestName: row.name,
+      message: `${row.name} has been under plan for 3+ weeks`,
+    })
+  }
+
+  for (const interest of state.interests) {
+    if (interest.goalHours && interest.goalHours > 0) {
+      const actual = data.actual[interest.id] ?? 0
+      if (actual >= interest.goalHours) {
+        insights.push({
+          type: 'goal',
+          interestName: interest.name,
+          message: `${interest.name} goal reached (${actual}h)`,
+        })
+      }
+    }
+  }
+
+  const highlights = getWeeklyHighlights(state, weekStart)
+  if (highlights.under) {
+    insights.push({
+      type: 'under',
+      interestName: highlights.under.name,
+      message: `${highlights.under.name} is ${Math.abs(highlights.under.delta)}h below plan`,
+    })
+  }
+
+  return insights.slice(0, 4)
 }

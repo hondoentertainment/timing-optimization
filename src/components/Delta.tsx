@@ -8,15 +8,13 @@ export function Delta({
   size?: 'xs' | 'sm'
 }) {
   const diff = actual - planned
-  if (diff === 0) return <span className="text-neutral-300">—</span>
+  if (diff === 0) return <span className="text-[var(--label-tertiary)]">—</span>
   const sign = diff > 0 ? '+' : ''
-  const sizeClass = size === 'sm' ? 'text-sm' : 'text-xs'
+  const sizeClass = size === 'sm' ? 'text-[15px]' : 'text-[13px]'
+  const color =
+    diff > 0 ? 'text-[var(--success)]' : 'text-[var(--label-secondary)]'
   return (
-    <span
-      className={`font-mono tabular-nums ${sizeClass} ${
-        diff > 0 ? 'text-neutral-700' : 'text-neutral-400'
-      }`}
-    >
+    <span className={`font-medium tabular-nums ${sizeClass} ${color}`}>
       {sign}
       {diff}h
     </span>

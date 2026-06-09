@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { SUGGESTED_INTERESTS } from '../constants'
+import { Button } from './ui/Button'
 
 type AddResult = { ok: true } | { ok: false; reason: 'empty' | 'duplicate' }
 
@@ -73,7 +74,7 @@ export function AddInterestPanel({
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <form onSubmit={handleSubmit} className="space-y-2">
         <div className="flex gap-2">
           <input
@@ -86,41 +87,27 @@ export function AddInterestPanel({
               if (error) setError(null)
             }}
             placeholder="Type an interest…"
-            aria-invalid={error ? true : undefined}
-            aria-describedby={error ? 'interest-error' : 'interest-hint'}
-            className={`flex-1 border-b bg-transparent py-2 text-sm outline-none placeholder:text-neutral-300 ${
-              error
-                ? 'border-neutral-900'
-                : 'border-neutral-300 focus:border-neutral-900'
-            }`}
+            className="min-w-0 flex-1 rounded-[var(--radius-md)] bg-[var(--fill-secondary)] px-3.5 py-2.5 text-[15px] outline-none placeholder:text-[var(--label-tertiary)] focus:ring-2 focus:ring-[var(--accent-soft)]"
           />
-          <button
-            type="submit"
-            disabled={!name.trim()}
-            className="shrink-0 px-3 py-2 text-sm text-neutral-600 hover:text-neutral-900 disabled:text-neutral-300"
-          >
+          <Button type="submit" variant="primary" disabled={!name.trim()}>
             Add
-          </button>
+          </Button>
         </div>
 
-        <div className="flex items-center justify-between min-h-[18px]">
+        <div className="min-h-[18px] px-1">
           {error ? (
-            <p id="interest-error" className="text-xs text-neutral-700">
-              {error}
-            </p>
+            <p className="text-[13px] text-[var(--danger)]">{error}</p>
           ) : justAdded ? (
-            <p className="text-xs text-neutral-500">Added {justAdded}</p>
+            <p className="text-[13px] text-[var(--success)]">Added {justAdded}</p>
           ) : (
-            <p id="interest-hint" className="text-xs text-neutral-400">
-              Press Enter to add
-            </p>
+            <p className="text-[13px] text-[var(--label-tertiary)]">Press Enter to add</p>
           )}
         </div>
       </form>
 
       {showSuggestions && availableSuggestions.length > 0 && (
         <div>
-          <p className="mb-3 text-xs uppercase tracking-widest text-neutral-400">
+          <p className="mb-2 px-1 text-[13px] font-medium text-[var(--label-secondary)]">
             {existingNames.length === 0 ? 'Suggestions' : 'Add more'}
           </p>
           <div className="flex flex-wrap gap-2">
@@ -129,7 +116,7 @@ export function AddInterestPanel({
                 key={suggestion}
                 type="button"
                 onClick={() => tryAdd(suggestion)}
-                className="rounded-sm border border-neutral-200 px-3 py-1.5 text-sm text-neutral-600 hover:border-neutral-400 hover:text-neutral-900"
+                className="rounded-full bg-[var(--fill-secondary)] px-3.5 py-1.5 text-[14px] font-medium text-[var(--label)] transition-all hover:bg-[var(--fill)] active:scale-95"
               >
                 {suggestion}
               </button>

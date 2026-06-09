@@ -1,13 +1,14 @@
 import { useEffect } from 'react'
 import type { View } from '../types'
-import { shiftWeek } from '../utils/week'
+import { getWeekStart, shiftWeek } from '../utils/week'
 
 const VIEW_KEYS: Record<string, View> = {
-  '1': 'plan',
-  '2': 'track',
-  '3': 'review',
-  '4': 'interests',
-  '5': 'settings',
+  '1': 'home',
+  '2': 'plan',
+  '3': 'track',
+  '4': 'review',
+  '5': 'interests',
+  '6': 'settings',
 }
 
 function isEditableTarget(target: EventTarget | null) {
@@ -41,7 +42,7 @@ export function useKeyboardShortcuts({
 
       if (e.key === '/') {
         e.preventDefault()
-        if (view !== 'interests' && view !== 'plan') setView('interests')
+        setView('interests')
         requestAnimationFrame(() => {
           document.getElementById('add-interest-input')?.focus()
         })
@@ -57,6 +58,12 @@ export function useKeyboardShortcuts({
       if (e.key === 'ArrowRight') {
         e.preventDefault()
         setCurrentWeek(shiftWeek(currentWeek, 1))
+        return
+      }
+
+      if (e.key === 't' || e.key === 'T') {
+        e.preventDefault()
+        setCurrentWeek(getWeekStart())
       }
     }
 

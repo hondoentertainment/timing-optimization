@@ -1,13 +1,26 @@
 import { useRef, useState } from 'react'
 import type { AppStore } from '../hooks/useAppStore'
 import { AddInterestPanel } from './AddInterestPanel'
+import { Button } from './ui/Button'
+import { Card, CardDivider, CardRow } from './ui/Card'
+import { ColorPicker } from './ui/ColorPicker'
+import { PageHeader, SectionLabel } from './ui/PageHeader'
 
 export function InterestsView({ store }: { store: AppStore }) {
-  const { state, addInterest, renameInterest, removeInterest } = store
+  const {
+    state,
+    addInterest,
+    renameInterest,
+    setInterestColor,
+    setInterestGoal,
+    reorderInterest,
+    removeInterest,
+  } = store
   const [recentlyAddedId, setRecentlyAddedId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [editError, setEditError] = useState<string | null>(null)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
   const editRef = useRef<HTMLInputElement>(null)
 
   function handleAdd(name: string) {
@@ -38,93 +51,150 @@ export function InterestsView({ store }: { store: AppStore }) {
     setEditError(null)
   }
 
-  function cancelEdit() {
-    setEditingId(null)
-    setEditName('')
-    setEditError(null)
-  }
-
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-lg font-medium text-neutral-900">Interests</h1>
-        <p className="mt-1 text-sm text-neutral-500">
-          Specific activities you want time for — piano, hiking, Python, etc.
-        </p>
-      </div>
-
-      <AddInterestPanel
-        existingNames={state.interests.map((i) => i.name)}
-        onAdd={handleAdd}
+    <div className="animate-fade-in space-y-8">
+      <PageHeader
+        title="Interests"
+        subtitle="Specific activities you optimize time for"
       />
 
+      <Card className="p-5">
+        <AddInterestPanel
+          existingNames={state.interests.map((i) => i.name)}
+          onAdd={handleAdd}
+        />
+      </Card>
+
       {state.interests.length === 0 ? (
-        <p className="text-sm text-neutral-400">
+        <p className="px-1 text-[15px] text-[var(--label-secondary)]">
           Pick a suggestion or type your own to get started.
         </p>
       ) : (
         <div>
-          <p className="mb-3 text-xs uppercase tracking-widest text-neutral-400">
-            {state.interests.length}{' '}
-            {state.interests.length === 1 ? 'interest' : 'interests'}
-          </p>
-          <ul className="divide-y divide-neutral-100">
-            {state.interests.map((interest) => (
-              <li
-                key={interest.id}
-                className={`flex items-center justify-between py-3 transition-colors duration-500 ${
-                  recentlyAddedId === interest.id ? 'bg-neutral-50 -mx-2 px-2' : ''
-                }`}
-              >
-                <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <span
-                    className="h-2 w-2 shrink-0 rounded-full"
-                    style={{ backgroundColor: interest.color }}
-                  />
-                  {editingId === interest.id ? (
-                    <div className="flex-1">
+          <SectionLabel>{state.interests.length} interests</SectionLabel>
+          <Card className="mt-2 overflow-hidden">
+            {state.interests.map((interest, index) => (
+              <div key={interest.id}>
+                {index > 0 && <CardDivider />}
+                <div
+                  className={`transition-colors duration-500 ${
+                    recentlyAddedId === interest.id ? 'bg-[var(--accent-soft)]' : ''
+                  }`}
+                >
+                  <CardRow onClick={() => setExpandedId(expandedId === interest.id ? null : interest.id)}>
+                    <span
+                      className="h-3 w-3 shrink-0 rounded-full"
+                      style={{ backgroundColor: interest.color }}
+                    />
+                    {editingId === interest.id ? (
                       <input
                         ref={editRef}
                         type="text"
                         value={editName}
+                        onClick={(e) => e.stopPropagation()}
                         onChange={(e) => {
                           setEditName(e.target.value)
                           if (editError) setEditError(null)
                         }}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') commitEdit()
-                          if (e.key === 'Escape') cancelEdit()
+                          if (e.key === 'Escape') {
+                            setEditingId(null)
+                            setEditError(null)
+                          }
                         }}
                         onBlur={commitEdit}
-                        className="w-full border-b border-neutral-900 bg-transparent py-0.5 text-sm outline-none"
+                        className="min-w-0 flex-1 bg-transparent text-[15px] font-medium outline-none"
                       />
-                      {editError && (
-                        <p className="mt-1 text-xs text-neutral-600">{editError}</p>
+                    ) : (
+                      <span
+                        className="min-w-0 flex-1 truncate text-[15px] font-medium text-[var(--label)]"
+                        onDoubleClick={(e) => {
+                          e.stopPropagation()
+                          startEdit(interest.id, interest.name)
+                        }}
+                      >
+                        {interest.name}
+                      </span>
+                    )}
+                    {interest.goalHours ? (
+                      <span className="text-[13px] tabular-nums text-[var(--label-secondary)]">
+                        {interest.goalHours}h/wk
+                      </span>
+                    ) : null}
+                    <span className="text-[var(--label-tertiary)]">
+                      {expandedId === interest.id ? '▾' : '▸'}
+                    </span>
+                  </CardRow>
+
+                  {expandedId === interest.id && (
+                    <div className="space-y-4 border-t border-[var(--separator)] bg-[var(--fill-secondary)]/40 px-4 py-4">
+                      <div>
+                        <p className="mb-2 text-[13px] font-medium text-[var(--label-secondary)]">Color</p>
+                        <ColorPicker
+                          value={interest.color}
+                          onChange={(c) => setInterestColor(interest.id, c)}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <p className="text-[13px] font-medium text-[var(--label-secondary)]">Weekly goal</p>
+                        <input
+                          type="number"
+                          min={0}
+                          step={0.5}
+                          value={interest.goalHours ?? ''}
+                          placeholder="—"
+                          onChange={(e) =>
+                            setInterestGoal(
+                              interest.id,
+                              parseFloat(e.target.value) || 0,
+                            )
+                          }
+                          className="w-16 rounded-lg bg-[var(--bg-elevated)] px-2 py-1.5 text-right text-[15px] font-medium tabular-nums outline-none"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={index === 0}
+                          onClick={() => reorderInterest(interest.id, 'up')}
+                        >
+                          Move up
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={index === state.interests.length - 1}
+                          onClick={() => reorderInterest(interest.id, 'down')}
+                        >
+                          Move down
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => startEdit(interest.id, interest.name)}
+                        >
+                          Rename
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="ml-auto"
+                          onClick={() => removeInterest(interest.id)}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                      {editError && editingId === interest.id && (
+                        <p className="text-[13px] text-[var(--danger)]">{editError}</p>
                       )}
                     </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => startEdit(interest.id, interest.name)}
-                      className="truncate text-sm text-neutral-800 text-left hover:text-neutral-600"
-                      title="Click to rename"
-                    >
-                      {interest.name}
-                    </button>
                   )}
                 </div>
-                {editingId !== interest.id && (
-                  <button
-                    type="button"
-                    onClick={() => removeInterest(interest.id)}
-                    className="ml-4 shrink-0 text-xs text-neutral-400 hover:text-neutral-700"
-                  >
-                    Remove
-                  </button>
-                )}
-              </li>
+              </div>
             ))}
-          </ul>
+          </Card>
         </div>
       )}
     </div>

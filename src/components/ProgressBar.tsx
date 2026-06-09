@@ -8,12 +8,13 @@ export function ProgressBar({ segments, total }: ProgressBarProps) {
 
   return (
     <div>
-      <div className="flex h-2 overflow-hidden rounded-sm bg-neutral-200">
+      <div className="flex h-3 overflow-hidden rounded-full bg-[var(--fill)]">
         {segments.map((seg) =>
           seg.hours > 0 ? (
             <div
               key={seg.label}
               title={`${seg.label}: ${seg.hours}h`}
+              className="h-full transition-all duration-500 ease-out first:rounded-l-full last:rounded-r-full"
               style={{
                 width: `${(seg.hours / total) * 100}%`,
                 backgroundColor: seg.color,
@@ -22,8 +23,8 @@ export function ProgressBar({ segments, total }: ProgressBarProps) {
           ) : null,
         )}
       </div>
-      <p className="mt-2 font-mono text-xs tabular-nums text-neutral-500">
-        {used} / {total}h allocated
+      <p className="mt-2.5 text-[13px] tabular-nums text-[var(--label-secondary)]">
+        {used} of {total} hours allocated
       </p>
     </div>
   )
